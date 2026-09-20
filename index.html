@@ -1,111 +1,112 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-  <title>Personal Document Vault — API Test</title>
-
-  <script
-    src="https://accounts.google.com/gsi/client"
-    async
-    defer
-    onload="gisLoaded()">
-  </script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#1f2937">
+<link rel="manifest" href="./manifest.json">
+<title>Personal Document Vault</title>
+<style>
+:root{font-family:Arial,sans-serif;color:#111827;background:#f3f4f6}
+*{box-sizing:border-box} body{margin:0;min-height:100vh}
+header{padding:18px 20px;background:#1f2937;color:#fff}
+header h1{margin:0;font-size:20px}
+main{max-width:760px;margin:auto;padding:20px}
+.card{background:#fff;border:1px solid #d1d5db;border-radius:12px;padding:18px;margin-bottom:16px}
+button{min-height:44px;padding:10px 16px;border:0;border-radius:8px;background:#2563eb;color:#fff;font-size:15px}
+button:disabled{opacity:.6}
+#status{margin-top:12px;color:#6b7280}
+#output{white-space:pre-wrap;overflow-wrap:anywhere;font:13px/1.45 ui-monospace,monospace;background:#111827;color:#f9fafb;padding:14px;border-radius:8px;min-height:180px}
+.pass{color:#166534;font-weight:700}.fail{color:#b91c1c;font-weight:700}
+</style>
+<script src="https://accounts.google.com/gsi/client" async defer onload="gisLoaded()"></script>
 </head>
-
 <body>
-  <h2>Personal Document Vault — API Test</h2>
+<header><h1>Personal Document Vault</h1></header>
+<main>
+<section class="card">
+<h2>Direct PWA → STAGING API Test</h2>
+<p>This first-run shell verifies Google OAuth, the Apps Script API, the existing application session, and document filters.</p>
+<button id="authorizeButton" type="button" onclick="authorize()" disabled>Sign in with Google</button>
+<div id="status">Waiting for Google Identity Services...</div>
+</section>
+<section class="card">
+<h3>Result</h3>
+<div id="resultLabel">Not tested</div>
+<pre id="output">Waiting...</pre>
+</section>
+</main>
+<script>
+const CLIENT_ID='877844953999-calltjdsasf3psnvs5pob15a5l5ei761.apps.googleusercontent.com';
+const DEPLOYMENT_ID='AKfycbzbwAj0qpPcHfpOnRAf4VDS6UUo4y8GtZibbo_zcxE06JnbKe9KC85mDAtJxQhmRDNf';
+const SCOPES=[
+'https://www.googleapis.com/auth/drive',
+'https://www.googleapis.com/auth/spreadsheets',
+'https://www.googleapis.com/auth/userinfo.email'
+].join(' ');
+let tokenClient=null,accessToken=null;
 
-  <button id="authorizeButton" type="button" onclick="authorize()">
-    Sign in with Google
-  </button>
-
-  <pre id="output">Waiting for Google Identity Services...</pre>
-
-  <script>
-    const CLIENT_ID =
-      '877844953999-calltjdsasf3psnvs5pob15a5l5ei761.apps.googleusercontent.com';
-
-    const SCRIPT_ID =
-      '1s9mFCnwN86qFLlWVeD0bxSx3DEIAd8ehudASbHOkLI1HU3H4IdTy4skc';
-
-    const DEPLOYMENT_ID =
-      'AKfycbzbwAj0qpPcHfpOnRAf4VDS6UUo4y8GtZibbo_zcxE06JnbKe9KC85mDAtJxQhmRDNf';
-
-    const SCOPES = [
-      'https://www.googleapis.com/auth/drive',
-      'https://www.googleapis.com/auth/spreadsheets',
-      'https://www.googleapis.com/auth/userinfo.email'
-    ].join(' ');
-
-    let tokenClient;
-    let accessToken = null;
-
-    function gisLoaded() {
-      tokenClient = google.accounts.oauth2.initTokenClient({
-        client_id: CLIENT_ID,
-        scope: SCOPES,
-        callback: function (response) {
-          if (response.error) {
-            document.getElementById('output').textContent =
-              JSON.stringify(response, null, 2);
-            return;
-          }
-
-          accessToken = response.access_token;
-          runIdentityTest();
-        }
-      });
-
-      document.getElementById('output').textContent =
-        'Google Identity Services loaded. Click "Sign in with Google".';
-    }
-
-    function authorize() {
-      if (!tokenClient) {
-        document.getElementById('output').textContent =
-          'Google Identity Services is still loading. Please wait.';
-        return;
-      }
-
-      tokenClient.requestAccessToken();
-    }
-
-    async function runIdentityTest() {
-  const output = document.getElementById('output');
-
-  output.textContent = 'Calling Apps Script API...';
-
-  try {
-    const response = await fetch(
-      'https://script.googleapis.com/v1/scripts/' +
-      DEPLOYMENT_ID +
-      ':run',
-      {
-        method: 'POST',
-        headers: {
-          'Authorization': 'Bearer ' + accessToken,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          function: 'pwaApiIdentityTest',
-          parameters: [],
-          devMode: true
-        })
-      }
-    );
-
-    const data = await response.json();
-
-    output.textContent = JSON.stringify(data, null, 2);
-
-  } catch (error) {
-    output.textContent =
-      'ERROR:\n' + error.message;
-  }
+function setStatus(message){document.getElementById('status').textContent=message}
+function setResult(success,message){
+ const el=document.getElementById('resultLabel');
+ el.textContent=message; el.className=success?'pass':'fail';
 }
-
-  </script>
+function gisLoaded(){
+ tokenClient=google.accounts.oauth2.initTokenClient({
+  client_id:CLIENT_ID,scope:SCOPES,callback:handleOAuthResponse
+ });
+ document.getElementById('authorizeButton').disabled=false;
+ setStatus('Google Identity Services loaded. Ready.');
+}
+function authorize(){
+ if(!tokenClient){setStatus('Google Identity Services is still loading.');return}
+ setStatus('Opening Google authorization...');
+ document.getElementById('authorizeButton').disabled=true;
+ tokenClient.requestAccessToken();
+}
+async function handleOAuthResponse(response){
+ if(response.error){
+  setResult(false,'OAuth failed'); setStatus('OAuth returned an error.');
+  document.getElementById('output').textContent=JSON.stringify(response,null,2);
+  document.getElementById('authorizeButton').disabled=false; return;
+ }
+ accessToken=response.access_token;
+ setStatus('OAuth succeeded. Calling STAGING API...');
+ await runStagingTests();
+}
+async function callAppsScript(functionName){
+ const response=await fetch(
+  'https://script.googleapis.com/v1/scripts/'+DEPLOYMENT_ID+':run',{
+   method:'POST',
+   headers:{
+    'Authorization':'Bearer '+accessToken,
+    'Content-Type':'application/json'
+   },
+   body:JSON.stringify({function:functionName,parameters:[],devMode:true})
+  });
+ const data=await response.json();
+ if(!response.ok||data.error) throw new Error(JSON.stringify(data,null,2));
+ return data;
+}
+async function runStagingTests(){
+ const output=document.getElementById('output');
+ try{
+  output.textContent='1/3 Calling pwaApiIdentityTest()...';
+  const identity=await callAppsScript('pwaApiIdentityTest');
+  output.textContent='1/3 IDENTITY PASS\n\n'+JSON.stringify(identity,null,2)+'\n\n2/3 Calling pwaApiSessionTest()...';
+  const session=await callAppsScript('pwaApiSessionTest');
+  output.textContent='1/3 IDENTITY PASS\n\n'+JSON.stringify(identity,null,2)+'\n\n2/3 SESSION PASS\n\n'+JSON.stringify(session,null,2)+'\n\n3/3 Calling pwaApiDocumentFiltersTest()...';
+  const filters=await callAppsScript('pwaApiDocumentFiltersTest');
+  output.textContent='1/3 IDENTITY PASS\n\n'+JSON.stringify(identity,null,2)+'\n\n2/3 SESSION PASS\n\n'+JSON.stringify(session,null,2)+'\n\n3/3 DOCUMENT FILTERS PASS\n\n'+JSON.stringify(filters,null,2);
+  setStatus('Direct PWA → Google OAuth → STAGING API flow completed.');
+  setResult(true,'B3.4 FIRST RUN PASS');
+ }catch(error){
+  output.textContent='TEST FAILED\n\n'+(error&&error.message?error.message:String(error));
+  setStatus('The direct STAGING API test failed.');
+  setResult(false,'B3.4 FIRST RUN FAILED');
+ }
+ document.getElementById('authorizeButton').disabled=false;
+}
+</script>
 </body>
 </html>
