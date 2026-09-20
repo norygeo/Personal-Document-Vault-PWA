@@ -1176,14 +1176,14 @@ select option {
 
 // Temporary STAGING diagnostic entry point.
 // Remove this after the permission issue is identified.
-window.runPwaPermissionDiagnostic = function() {
-  return callAppsScript('pwaApiPermissionDiagnostic', [])
+window.runPwaIdentityTest = function() {
+  return callAppsScript('pwaApiIdentityTest', [])
     .then(function(result) {
-      console.log('[PWA PERMISSION DIAGNOSTIC]', result);
+      console.log('[PWA IDENTITY TEST]', result);
       return result;
     })
     .catch(function(error) {
-      console.error('[PWA PERMISSION DIAGNOSTIC ERROR]', error);
+      console.error('[PWA IDENTITY TEST ERROR]', error);
       throw error;
     });
 };
