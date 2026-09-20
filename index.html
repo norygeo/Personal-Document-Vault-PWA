@@ -1101,63 +1101,92 @@ select option {
   };
 
   async function callAppsScript(functionName, parameters) {
-    if (!accessToken) {
-      if (functionName === 'getApplicationSession') {
-        return { authenticated: false };
-      }
-      if (functionName === 'getPage' && parameters && parameters[0] === 'login') {
-        return '<div class=\"page-container\">' +
-          '<h1>Personal Document Vault - STAGING</h1>' +
-          '<p>Secure Family Document Repository</p><br>' +
-          '<button id=\"googleSignInButton\" class=\"btn\" onclick=\"signInWithGoogle()\">Sign in with Google</button>' +
-          '<div id=\"loginMessage\" class=\"info\"></div>' +
-          '</div>';
-      }
-      if (functionName === 'validateApplicationSession') {
-        return false;
-      }
-      if (functionName === 'logoutUser') {
-        return { success: true };
-      }
-      throw new Error('Google authorization is required.');
-    }
 
-    const response = await fetch(
-      'https://script.googleapis.com/v1/scripts/' + DEPLOYMENT_ID + ':run',
-      {
-        method: 'POST',
-        headers: {
-          'Authorization': 'Bearer ' + accessToken,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          function: functionName,
-          parameters: parameters || [],
-          devMode: true
-        })
-      }
-    );
-
-    const data = await response.json();
-
-    if (!response.ok || data.error) {
-      const message = data && data.error && data.error.message
-        ? data.error.message
-        : JSON.stringify(data);
-      throw new Error(message);
-    }
-
-    if (data.response && data.response.error) {
-      const executionError = data.response.error;
-      throw new Error(
-        executionError.errorMessage ||
-        executionError.errorType ||
-        JSON.stringify(executionError)
-      );
-    }
-
-    return data.response ? data.response.result : undefined;
+  // Temporary diagnostic bridge for STAGING permission testing.
+  // This exposes the existing authenticated call path to DevTools.
+  if (functionName === 'pwaApiPermissionDiagnostic') {
+    // Continue through the exact same API/OAuth path below.
   }
+
+  if (!accessToken) {
+
+    if (functionName === 'getApplicationSession') {
+      return { authenticated: false };
+    }
+
+    if (functionName === 'getPage' && parameters && parameters[0] === 'login') {
+      return '<div class="page-container">' +
+        '<h1>Personal Document Vault - STAGING</h1>' +
+        '<p>Secure Family Document Repository</p><br>' +
+        '<button id="googleSignInButton" class="btn" onclick="signInWithGoogle()">Sign in with Google</button>' +
+        '<div id="loginMessage" class="info"></div>' +
+        '</div>';
+    }
+
+    if (functionName === 'validateApplicationSession') {
+      return false;
+    }
+
+    if (functionName === 'logoutUser') {
+      return { success: true };
+    }
+
+    throw new Error('Google authorization is required.');
+  }
+
+  const response = await fetch(
+    'https://script.googleapis.com/v1/scripts/' + DEPLOYMENT_ID + ':run',
+    {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + accessToken,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        function: functionName,
+        parameters: parameters || [],
+        devMode: true
+      })
+    }
+  );
+
+  const data = await response.json();
+
+  if (!response.ok || data.error) {
+    const message = data && data.error && data.error.message
+      ? data.error.message
+      : JSON.stringify(data);
+
+    throw new Error(message);
+  }
+
+  if (data.response && data.response.error) {
+    const executionError = data.response.error;
+
+    throw new Error(
+      executionError.errorMessage ||
+      executionError.errorType ||
+      JSON.stringify(executionError)
+    );
+  }
+
+  return data.response ? data.response.result : undefined;
+}
+
+
+// Temporary STAGING diagnostic entry point.
+// Remove this after the permission issue is identified.
+window.runPwaPermissionDiagnostic = function() {
+  return callAppsScript('pwaApiPermissionDiagnostic', [])
+    .then(function(result) {
+      console.log('[PWA PERMISSION DIAGNOSTIC]', result);
+      return result;
+    })
+    .catch(function(error) {
+      console.error('[PWA PERMISSION DIAGNOSTIC ERROR]', error);
+      throw error;
+    });
+};
 
   function makeRunner(state) {
     const runnerState = state || {
